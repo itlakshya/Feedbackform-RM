@@ -1,0 +1,612 @@
+{
+  "admin": {
+    "name": "System Admin",
+    "email": "admin@feedback.local",
+    "passwordSalt": "6c68b026968e577284f18693b71533c2",
+    "passwordHash": "32f0ef2691057791a037ab6bbf84f743bac88e67bfe7d48b78968bbf3515c5be73095f2a491a94344d2515bc341924e34c3ac969242670a56c64fd97b814d070"
+  },
+  "activeBatchId": "batch-3874aae1",
+  "branches": [
+    {
+      "id": "branch-30cbc963",
+      "name": "Kochi"
+    },
+    {
+      "id": "branch-9ecb3d01",
+      "name": "Calcicut"
+    }
+  ],
+  "courses": [
+    {
+      "id": "course-e20f0cc1",
+      "name": "ACCA"
+    },
+    {
+      "id": "course-8d595120",
+      "name": "CA"
+    }
+  ],
+  "faculties": [
+    {
+      "id": "faculty-9e994d37",
+      "name": "Yadhu",
+      "subject": "General",
+      "designation": "Faculty",
+      "sessionsHandled": 1
+    },
+    {
+      "id": "faculty-54fd74c4",
+      "name": "Krishnanath",
+      "subject": "General",
+      "designation": "Faculty",
+      "sessionsHandled": 1
+    },
+    {
+      "id": "faculty-1fe2a718",
+      "name": "Surabhi",
+      "subject": "General",
+      "designation": "Faculty",
+      "sessionsHandled": 1
+    },
+    {
+      "id": "faculty-1f6d7a32",
+      "name": "vinu",
+      "subject": "General",
+      "designation": "Faculty",
+      "sessionsHandled": 1
+    },
+    {
+      "id": "faculty-cfb6e5c1",
+      "name": "keerthy",
+      "subject": "General",
+      "designation": "Faculty",
+      "sessionsHandled": 1
+    }
+  ],
+  "coordinators": [],
+  "mentors": [],
+  "questions": [
+    {
+      "id": "question-ad1b6e8d",
+      "category": "faculty",
+      "text": "How clearly were the topics explained during the class? *",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-5e81df06",
+      "category": "faculty",
+      "text": "Was the syllabus adequately and thoroughly covered? *",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-bd905536",
+      "category": "faculty",
+      "text": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-d1f9843e",
+      "category": "faculty",
+      "text": "Was the class conducted as per the scheduled timings?",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-96ed328f",
+      "category": "faculty",
+      "text": "What is your overall rating of the faculty?",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-58a8d26d",
+      "category": "faculty",
+      "text": "Any other comments or suggestions?",
+      "helper": "",
+      "inputType": "text",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-76a291c1",
+      "category": "general",
+      "text": "Coordinator Support",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-01509b4f",
+      "category": "general",
+      "text": "Mentor *",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    },
+    {
+      "id": "question-9a92ad8f",
+      "category": "general",
+      "text": "Rate your overall experience from IIC - Lakshya",
+      "helper": "",
+      "inputType": "rating",
+      "options": [],
+      "mandatory": false
+    }
+  ],
+  "batches": [
+    {
+      "id": "batch-1b873ba0",
+      "name": "ACCA-1",
+      "branchId": "branch-30cbc963",
+      "courseId": "course-e20f0cc1",
+      "semester": "Semester 1",
+      "strength": 0,
+      "facultyIds": [
+        "faculty-9e994d37",
+        "faculty-1fe2a718",
+        "faculty-54fd74c4",
+        "faculty-1f6d7a32",
+        "faculty-cfb6e5c1"
+      ],
+      "coordinatorId": null,
+      "mentorId": null,
+      "status": "active"
+    },
+    {
+      "id": "batch-3874aae1",
+      "name": "CA-1",
+      "branchId": "branch-9ecb3d01",
+      "courseId": "course-8d595120",
+      "semester": "Semester 1",
+      "strength": 0,
+      "facultyIds": [],
+      "coordinatorId": null,
+      "mentorId": null,
+      "status": "active"
+    },
+    {
+      "id": "batch-420504da",
+      "name": "CA-1",
+      "branchId": "branch-30cbc963",
+      "courseId": "course-8d595120",
+      "semester": "Semester 1",
+      "strength": 0,
+      "facultyIds": [
+        "faculty-9e994d37"
+      ],
+      "coordinatorId": null,
+      "mentorId": null,
+      "status": "active"
+    }
+  ],
+  "feedbackResponses": [
+    {
+      "batchId": "batch-1b873ba0",
+      "batchName": "ACCA-1",
+      "branch": "Kochi",
+      "course": "ACCA",
+      "semester": "Semester 1",
+      "studentName": "q",
+      "mobileNumber": "1234567890",
+      "email": "yadhu.k@iiclakshya.com",
+      "submittedAt": "1 Apr 2026, 3:50 pm",
+      "facultyResponses": [
+        {
+          "facultyId": "faculty-9e994d37",
+          "facultyName": "Yadhu",
+          "subject": "General",
+          "averageScore": 2.8,
+          "answers": [
+            {
+              "questionId": "question-ad1b6e8d",
+              "questionText": "How clearly were the topics explained during the class? *",
+              "inputType": "rating",
+              "value": "1"
+            },
+            {
+              "questionId": "question-5e81df06",
+              "questionText": "Was the syllabus adequately and thoroughly covered? *",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-bd905536",
+              "questionText": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-d1f9843e",
+              "questionText": "Was the class conducted as per the scheduled timings?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-96ed328f",
+              "questionText": "What is your overall rating of the faculty?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-58a8d26d",
+              "questionText": "Any other comments or suggestions?",
+              "inputType": "text",
+              "value": "a"
+            }
+          ],
+          "comment": "a"
+        },
+        {
+          "facultyId": "faculty-54fd74c4",
+          "facultyName": "Krishnanath",
+          "subject": "General",
+          "averageScore": 1.8,
+          "answers": [
+            {
+              "questionId": "question-ad1b6e8d",
+              "questionText": "How clearly were the topics explained during the class? *",
+              "inputType": "rating",
+              "value": "1"
+            },
+            {
+              "questionId": "question-5e81df06",
+              "questionText": "Was the syllabus adequately and thoroughly covered? *",
+              "inputType": "rating",
+              "value": "2"
+            },
+            {
+              "questionId": "question-bd905536",
+              "questionText": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+              "inputType": "rating",
+              "value": "2"
+            },
+            {
+              "questionId": "question-d1f9843e",
+              "questionText": "Was the class conducted as per the scheduled timings?",
+              "inputType": "rating",
+              "value": "2"
+            },
+            {
+              "questionId": "question-96ed328f",
+              "questionText": "What is your overall rating of the faculty?",
+              "inputType": "rating",
+              "value": "2"
+            },
+            {
+              "questionId": "question-58a8d26d",
+              "questionText": "Any other comments or suggestions?",
+              "inputType": "text",
+              "value": "a"
+            }
+          ],
+          "comment": "a"
+        },
+        {
+          "facultyId": "faculty-1fe2a718",
+          "facultyName": "Surabhi",
+          "subject": "General",
+          "averageScore": 2.8,
+          "answers": [
+            {
+              "questionId": "question-ad1b6e8d",
+              "questionText": "How clearly were the topics explained during the class? *",
+              "inputType": "rating",
+              "value": "2"
+            },
+            {
+              "questionId": "question-5e81df06",
+              "questionText": "Was the syllabus adequately and thoroughly covered? *",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-bd905536",
+              "questionText": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-d1f9843e",
+              "questionText": "Was the class conducted as per the scheduled timings?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-96ed328f",
+              "questionText": "What is your overall rating of the faculty?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-58a8d26d",
+              "questionText": "Any other comments or suggestions?",
+              "inputType": "text",
+              "value": "a"
+            }
+          ],
+          "comment": "a"
+        },
+        {
+          "facultyId": "faculty-1f6d7a32",
+          "facultyName": "vinu",
+          "subject": "General",
+          "averageScore": 3.2,
+          "answers": [
+            {
+              "questionId": "question-ad1b6e8d",
+              "questionText": "How clearly were the topics explained during the class? *",
+              "inputType": "rating",
+              "value": "1"
+            },
+            {
+              "questionId": "question-5e81df06",
+              "questionText": "Was the syllabus adequately and thoroughly covered? *",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-bd905536",
+              "questionText": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-d1f9843e",
+              "questionText": "Was the class conducted as per the scheduled timings?",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-96ed328f",
+              "questionText": "What is your overall rating of the faculty?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-58a8d26d",
+              "questionText": "Any other comments or suggestions?",
+              "inputType": "text",
+              "value": "a"
+            }
+          ],
+          "comment": ""
+        },
+        {
+          "facultyId": "faculty-cfb6e5c1",
+          "facultyName": "keerthy",
+          "subject": "General",
+          "averageScore": 2.8,
+          "answers": [
+            {
+              "questionId": "question-ad1b6e8d",
+              "questionText": "How clearly were the topics explained during the class? *",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-5e81df06",
+              "questionText": "Was the syllabus adequately and thoroughly covered? *",
+              "inputType": "rating",
+              "value": "2"
+            },
+            {
+              "questionId": "question-bd905536",
+              "questionText": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-d1f9843e",
+              "questionText": "Was the class conducted as per the scheduled timings?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-96ed328f",
+              "questionText": "What is your overall rating of the faculty?",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-58a8d26d",
+              "questionText": "Any other comments or suggestions?",
+              "inputType": "text",
+              "value": "f"
+            }
+          ],
+          "comment": "f"
+        }
+      ],
+      "supportResponses": [],
+      "generalResponse": {
+        "averageScore": 2,
+        "answers": [
+          {
+            "questionId": "question-76a291c1",
+            "questionText": "Coordinator Support",
+            "inputType": "rating",
+            "value": "2"
+          },
+          {
+            "questionId": "question-01509b4f",
+            "questionText": "Mentor *",
+            "inputType": "rating",
+            "value": "2"
+          },
+          {
+            "questionId": "question-9a92ad8f",
+            "questionText": "Rate your overall experience from IIC - Lakshya",
+            "inputType": "rating",
+            "value": "2"
+          }
+        ],
+        "comment": ""
+      },
+      "overallComment": "",
+      "responseId": "response-d87327f0"
+    },
+    {
+      "batchId": "batch-1b873ba0",
+      "batchName": "ACCA-1",
+      "branch": "Kochi",
+      "course": "ACCA",
+      "semester": "Semester 1",
+      "studentName": "est",
+      "mobileNumber": "8921298997",
+      "email": "yadhu.k@iiclakshya.com",
+      "submittedAt": "1 Apr 2026, 3:28 pm",
+      "facultyResponses": [
+        {
+          "facultyId": "faculty-9e994d37",
+          "facultyName": "Yadhu",
+          "subject": "General",
+          "averageScore": 3.71,
+          "answers": [
+            {
+              "questionId": "question-ad1b6e8d",
+              "questionText": "How clearly were the topics explained during the class? *",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-5e81df06",
+              "questionText": "Was the syllabus adequately and thoroughly covered? *",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-bd905536",
+              "questionText": "To what extent did the faculty help you understand the concepts rather than rote memorization?",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-d1f9843e",
+              "questionText": "Was the class conducted as per the scheduled timings?",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-96ed328f",
+              "questionText": "What is your overall rating of the faculty?",
+              "inputType": "rating",
+              "value": "4"
+            },
+            {
+              "questionId": "question-58a8d26d",
+              "questionText": "Any other comments or suggestions?",
+              "inputType": "text",
+              "value": ";lm,"
+            },
+            {
+              "questionId": "question-01509b4f",
+              "questionText": "Mentor *",
+              "inputType": "rating",
+              "value": "3"
+            },
+            {
+              "questionId": "question-9a92ad8f",
+              "questionText": "Rate your overall experience from IIC - Lakshya",
+              "inputType": "rating",
+              "value": "3"
+            }
+          ],
+          "comment": "km"
+        }
+      ],
+      "supportResponses": [
+        {
+          "sectionId": "coordinator",
+          "sectionTitle": "Coordinator Assistance & Response",
+          "ownerName": "Not assigned",
+          "averageScore": 0,
+          "answers": [],
+          "comment": "m,;om"
+        },
+        {
+          "sectionId": "mentor",
+          "sectionTitle": "Mentor Assistance & Support",
+          "ownerName": "Not assigned",
+          "averageScore": 0,
+          "answers": [],
+          "comment": "lm,lk"
+        }
+      ],
+      "generalResponse": {
+        "averageScore": 5,
+        "answers": [
+          {
+            "questionId": "question-76a291c1",
+            "questionText": "Coordinator Support",
+            "inputType": "rating",
+            "value": "5"
+          }
+        ],
+        "comment": ";lm"
+      },
+      "overallComment": "l,m",
+      "responseId": "response-17da7368"
+    },
+    {
+      "batchId": "batch-1b873ba0",
+      "batchName": "ACCA-1",
+      "branch": "Kochi",
+      "course": "ACCA",
+      "semester": "Semester 1",
+      "studentName": "Yadhu",
+      "mobileNumber": "8921298997",
+      "email": "yadhu.k@iiclakshya.com",
+      "submittedAt": "1 Apr 2026, 3:16 pm",
+      "facultyResponses": [
+        {
+          "facultyId": "faculty-9e994d37",
+          "facultyName": "Yadhu",
+          "subject": "General",
+          "averageScore": 0,
+          "answers": [],
+          "comment": "testt"
+        }
+      ],
+      "supportResponses": [
+        {
+          "sectionId": "coordinator",
+          "sectionTitle": "Coordinator Assistance & Response",
+          "ownerName": "Not assigned",
+          "averageScore": 0,
+          "answers": [],
+          "comment": "test"
+        },
+        {
+          "sectionId": "mentor",
+          "sectionTitle": "Mentor Assistance & Support",
+          "ownerName": "Not assigned",
+          "averageScore": 0,
+          "answers": [],
+          "comment": "test"
+        }
+      ],
+      "generalResponse": {
+        "averageScore": 0,
+        "answers": [],
+        "comment": "r"
+      },
+      "overallComment": "r",
+      "responseId": "response-682d095f"
+    }
+  ]
+}
