@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { FeedbackForm } from "@/components/feedback-form";
 import { getActiveFeedbackConfig } from "@/lib/feedback-data";
 

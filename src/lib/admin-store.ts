@@ -5,13 +5,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
-import { pgPool } from "@/lib/postgres";
+import { getPgPool } from "@/lib/postgres";
 import type { AdminBatch, AdminIdentity, AdminQuestionCategory, AdminSimplePerson, AdminStore } from "@/lib/admin-types";
 import type { BatchFeedbackConfig, FeedbackSubmission, GeneralFeedbackResponse } from "@/lib/feedback-types";
 
 const seedStorePath = path.join(process.cwd(), "data", "admin-store.json");
 let bootstrapPromise: Promise<void> | null = null;
-type Queryable = Pick<PoolClient, "query"> | typeof pgPool;
+type Queryable = Pick<PoolClient, "query">;
 
 function createDefaultAdminIdentity(): AdminIdentity {
   return { name: "System Admin", email: process.env.ADMIN_EMAIL ?? "admin@feedback.local", passwordSalt: "", passwordHash: "" };
@@ -44,7 +44,7 @@ async function readSeedStore() {
 }
 
 async function ensureDatabaseSchema() {
-  await pgPool.query(`
+  await getPgPool().query(`
     CREATE TABLE IF NOT EXISTS app_config (config_key TEXT PRIMARY KEY, config_value TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW());
     CREATE TABLE IF NOT EXISTS branches (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
     CREATE TABLE IF NOT EXISTS courses (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
@@ -59,9 +59,9 @@ async function ensureDatabaseSchema() {
 }
 
 async function readLegacyStore() {
-  const tableCheck = await pgPool.query<{ table_name: string | null }>("SELECT to_regclass('public.app_store') AS table_name");
+  const tableCheck = await getPgPool().query<{ table_name: string | null }>("SELECT to_regclass('public.app_store') AS table_name");
   if (!tableCheck.rows[0]?.table_name) return null;
-  const result = await pgPool.query<{ payload: Partial<AdminStore> }>("SELECT payload FROM app_store WHERE store_key = $1", ["admin-store"]);
+  const result = await getPgPool().query<{ payload: Partial<AdminStore> }>("SELECT payload FROM app_store WHERE store_key = $1", ["admin-store"]);
   if (!result.rowCount || !result.rows[0]) return null;
   return normalizeStore(result.rows[0].payload as Partial<AdminStore>);
 }
@@ -109,10 +109,10 @@ async function ensureDatabaseStore() {
   if (!bootstrapPromise) {
     bootstrapPromise = (async () => {
       await ensureDatabaseSchema();
-      const counts = await readStoreCounts(pgPool);
+      const counts = await readStoreCounts(getPgPool());
       if (Object.values(counts).some((value) => value > 0)) return;
       const legacyStore = (await readLegacyStore()) ?? (await readSeedStore());
-      const client = await pgPool.connect();
+      const client = await getPgPool().connect();
       try {
         await persistStore(client, legacyStore);
       } finally {
@@ -152,7 +152,7 @@ function findOrCreateByName<T extends { id: string; name: string }>(list: T[], n
 export async function readAdminStore(): Promise<AdminStore> {
   await ensureDatabaseStore();
   const [configResult, branchResult, courseResult, facultyResult, coordinatorResult, mentorResult, questionResult, batchResult, batchFacultyResult, feedbackResult] = await Promise.all([
-    pgPool.query("SELECT config_key, config_value FROM app_config"), pgPool.query("SELECT id, name FROM branches ORDER BY LOWER(name), id"), pgPool.query("SELECT id, name FROM courses ORDER BY LOWER(name), id"), pgPool.query("SELECT id, name, subject, designation, sessions_handled FROM faculties ORDER BY LOWER(name), id"), pgPool.query("SELECT id, name FROM coordinators ORDER BY LOWER(name), id"), pgPool.query("SELECT id, name FROM mentors ORDER BY LOWER(name), id"), pgPool.query("SELECT id, text, helper, category, input_type, options, mandatory FROM questions ORDER BY id"), pgPool.query("SELECT id, name, branch_id, course_id, semester, strength, coordinator_id, mentor_id, status FROM batches ORDER BY LOWER(name), id"), pgPool.query("SELECT batch_id, faculty_id FROM batch_faculties ORDER BY batch_id, faculty_id"), pgPool.query("SELECT response_id, batch_id, batch_name, branch, course, semester, student_name, mobile_number, email, submitted_at, faculty_responses, support_responses, general_response, overall_comment FROM feedback_responses ORDER BY submitted_at DESC, response_id DESC")
+    getPgPool().query("SELECT config_key, config_value FROM app_config"), getPgPool().query("SELECT id, name FROM branches ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM courses ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name, subject, designation, sessions_handled FROM faculties ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM coordinators ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM mentors ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, text, helper, category, input_type, options, mandatory FROM questions ORDER BY id"), getPgPool().query("SELECT id, name, branch_id, course_id, semester, strength, coordinator_id, mentor_id, status FROM batches ORDER BY LOWER(name), id"), getPgPool().query("SELECT batch_id, faculty_id FROM batch_faculties ORDER BY batch_id, faculty_id"), getPgPool().query("SELECT response_id, batch_id, batch_name, branch, course, semester, student_name, mobile_number, email, submitted_at, faculty_responses, support_responses, general_response, overall_comment FROM feedback_responses ORDER BY submitted_at DESC, response_id DESC")
   ]);
   const batchFacultyMap = new Map<string, string[]>();
   for (const item of batchFacultyResult.rows as Array<{ batch_id: string; faculty_id: string }>) { const facultyIds = batchFacultyMap.get(item.batch_id) ?? []; facultyIds.push(item.faculty_id); batchFacultyMap.set(item.batch_id, facultyIds); }
@@ -171,7 +171,7 @@ export async function readAdminStore(): Promise<AdminStore> {
   };
 }
 
-export async function writeAdminStore(store: AdminStore) { await ensureDatabaseStore(); const client = await pgPool.connect(); try { await persistStore(client, store); } finally { client.release(); } }
+export async function writeAdminStore(store: AdminStore) { await ensureDatabaseStore(); const client = await getPgPool().connect(); try { await persistStore(client, store); } finally { client.release(); } }
 export async function saveFeedbackSubmission(submission: FeedbackSubmission) { const store = await readAdminStore(); store.feedbackResponses = [{ ...submission, responseId: submission.responseId ?? createId("response") }, ...store.feedbackResponses]; await writeAdminStore(store); }
 export async function deleteFeedbackResponse(responseId: string) { const store = await readAdminStore(); store.feedbackResponses = store.feedbackResponses.filter((response) => response.responseId !== responseId); await writeAdminStore(store); }
 export async function deleteFeedbackResponses(responseIds: string[]) { const ids = new Set(responseIds.filter(Boolean)); if (ids.size === 0) return; const store = await readAdminStore(); store.feedbackResponses = store.feedbackResponses.filter((response) => !response.responseId || !ids.has(response.responseId)); await writeAdminStore(store); }

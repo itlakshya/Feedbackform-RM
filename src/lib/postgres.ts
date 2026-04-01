@@ -17,8 +17,10 @@ function createPool() {
   });
 }
 
-export const pgPool = global.__feedbackPgPool ?? createPool();
+export function getPgPool() {
+  if (!global.__feedbackPgPool) {
+    global.__feedbackPgPool = createPool();
+  }
 
-if (process.env.NODE_ENV !== "production") {
-  global.__feedbackPgPool = pgPool;
+  return global.__feedbackPgPool;
 }
