@@ -24,9 +24,7 @@ export default async function AdminLoginPage() {
             Use the admin panel to add branches, courses, batches, faculty, and question
             banks. The public feedback form automatically reads the active batch from this backend store.
           </p>
-          <div className="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-5 text-sm leading-7 text-amber-950">
-            Admin login from <strong>.env</strong>: <strong>{adminLogin.email}</strong> / <strong>{adminLogin.password}</strong>
-          </div>
+        
         </section>
         <AdminLoginForm />
       </div>
