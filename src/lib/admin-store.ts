@@ -144,6 +144,29 @@ function parseCsv(text: string) {
   return rows;
 }
 
+function getFacultyColumnIndexes(headers: string[]) {
+  return headers.reduce<number[]>((indexes, header, index) => {
+    const normalized = header.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if (normalized === "faculty" || normalized === "faculty_name" || /^faculty_?\d+$/.test(normalized) || /^faculty_name_?\d+$/.test(normalized)) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+}
+
+function getUniqueFacultyNames(row: string[], facultyColumnIndexes: number[]) {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const index of facultyColumnIndexes) {
+    const name = row[index]?.trim() ?? "";
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    names.push(name);
+  }
+  return names;
+}
+
 function parseQuestionOptions(value: unknown) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : []; }
 function parseGeneralResponse(value: unknown): GeneralFeedbackResponse { if (value && typeof value === "object") { const parsed = value as GeneralFeedbackResponse; return { averageScore: Number(parsed.averageScore ?? 0), answers: Array.isArray(parsed.answers) ? parsed.answers : [], comment: typeof parsed.comment === "string" ? parsed.comment : "" }; } return { averageScore: 0, answers: [], comment: "" }; }
 type FeedbackResponseRow = { response_id: string; batch_id: string; batch_name: string; branch: string; course: string; semester: string; student_name: string; mobile_number: string; email: string; submitted_at: Date | string; faculty_responses: unknown; support_responses: unknown; general_response: unknown; overall_comment: string };
@@ -424,21 +447,28 @@ export async function importMasterCsv(csvText: string) {
   const summary = { processedRows: 0, createdBranches: 0, createdCourses: 0, createdBatches: 0, createdFaculties: 0, linkedFaculties: 0 };
   if (rows.length < 2) return summary;
   const headers = rows[0].map((header) => header.trim().toLowerCase()); const indexOf = (name: string) => headers.indexOf(name);
+  const facultyColumnIndexes = getFacultyColumnIndexes(headers);
   for (const row of rows.slice(1)) {
-    const branchName = row[indexOf("branch")]?.trim() ?? ""; const courseName = row[indexOf("course")]?.trim() ?? ""; const batchName = row[indexOf("batch")]?.trim() ?? ""; const facultyName = row[indexOf("faculty_name")]?.trim() ?? "";
+    const branchName = row[indexOf("branch")]?.trim() ?? ""; const courseName = row[indexOf("course")]?.trim() ?? ""; const batchName = row[indexOf("batch")]?.trim() ?? "";
     if (!branchName || !courseName || !batchName) continue; summary.processedRows += 1;
     const previousBranchCount = store.branches.length; const branch = findOrCreateByName(store.branches, branchName, "branch"); if (store.branches.length > previousBranchCount) summary.createdBranches += 1;
     const previousCourseCount = store.courses.length; const course = findOrCreateByName(store.courses, courseName, "course"); if (store.courses.length > previousCourseCount) summary.createdCourses += 1;
-    let facultyId: string | null = null;
-    if (facultyName) {
+    const facultyIds: string[] = [];
+    for (const facultyName of getUniqueFacultyNames(row, facultyColumnIndexes)) {
       const existingFaculty = store.faculties.find((item) => item.name.trim().toLowerCase() === facultyName.toLowerCase());
-      if (existingFaculty) facultyId = existingFaculty.id;
-      else { const createdFaculty = { id: createId("faculty"), name: facultyName, subject: "General", designation: "Faculty", sessionsHandled: 1 }; store.faculties.push(createdFaculty); summary.createdFaculties += 1; facultyId = createdFaculty.id; }
+      if (existingFaculty) { facultyIds.push(existingFaculty.id); continue; }
+      const createdFaculty = { id: createId("faculty"), name: facultyName, subject: "General", designation: "Faculty", sessionsHandled: 1 };
+      store.faculties.push(createdFaculty); summary.createdFaculties += 1; facultyIds.push(createdFaculty.id);
     }
     const existingBatch = store.batches.find((item) => item.name.trim().toLowerCase() === batchName.toLowerCase() && item.branchId === branch.id && item.courseId === course.id);
-    if (existingBatch) { if (facultyId && !existingBatch.facultyIds.includes(facultyId)) { existingBatch.facultyIds.push(facultyId); summary.linkedFaculties += 1; } continue; }
-    store.batches.push({ id: createId("batch"), name: batchName, branchId: branch.id, courseId: course.id, semester: "Semester 1", strength: 0, facultyIds: facultyId ? [facultyId] : [], coordinatorId: null, mentorId: null, status: "active" });
-    summary.createdBatches += 1; if (facultyId) summary.linkedFaculties += 1;
+    if (existingBatch) {
+      for (const facultyId of facultyIds) {
+        if (!existingBatch.facultyIds.includes(facultyId)) { existingBatch.facultyIds.push(facultyId); summary.linkedFaculties += 1; }
+      }
+      continue;
+    }
+    store.batches.push({ id: createId("batch"), name: batchName, branchId: branch.id, courseId: course.id, semester: "Semester 1", strength: 0, facultyIds, coordinatorId: null, mentorId: null, status: "active" });
+    summary.createdBatches += 1; summary.linkedFaculties += facultyIds.length;
   }
   resetActiveBatchIfMissing(store); await writeAdminStore(store); return summary;
 }

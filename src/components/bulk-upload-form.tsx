@@ -17,7 +17,7 @@ export function BulkUploadForm() {
       </div>
       <input type="file" name="csvFile" accept=".csv,text/csv" className="block w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700" required />
       <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-4 text-sm leading-7 text-slate-600">
-        Missing branch, course, batch, or faculty values are created automatically during import. If a branch, course, or batch already exists, the import maps to the existing record and does not create a duplicate.
+        Missing branch, course, batch, or faculty values are created automatically during import. If a branch, course, or batch already exists, the import maps to the existing record and does not create a duplicate. Add as many Faculty columns as needed (Faculty1, Faculty2, Faculty3, ...). Leave unused faculty cells blank.
       </div>
       {state.success ? <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{state.success}</p> : null}
       {state.error ? <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{state.error}</p> : null}

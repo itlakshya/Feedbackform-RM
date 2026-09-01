@@ -1,10 +1,10 @@
-import { deleteBulkFeedbackResponsesAction, deleteFeedbackResponseAction } from "@/app/admin/actions";
 import { requireAdminSession } from "@/lib/admin-auth";
 import { parsePage, redirectIfStalePage } from "@/lib/admin-pagination";
 import { getFeedbackResponseMetrics, listFeedbackResponsesPage, listFeedbackTableQuestions } from "@/lib/admin-store";
 import { buildGroupedFeedbackResponseTable, getAnswerValue } from "@/lib/feedback-response-table";
 import { AdminShell, SectionCard } from "@/components/admin-shell";
 import { AdminPagination, ShowingCount } from "@/components/admin-list-ui";
+import { FeedbackResponseBulkDeleteButton, FeedbackResponseDeleteButton } from "@/components/feedback-response-deletes";
 import { FeedbackResponseSelectAll } from "@/components/feedback-response-select-all";
 
 export default async function FeedbackResponsesPage({
@@ -48,9 +48,7 @@ export default async function FeedbackResponsesPage({
               <a className="inline-flex min-h-12 items-center justify-center rounded-full bg-emerald-600 px-6 font-semibold text-white transition hover:bg-emerald-700" href="/admin/feedback-responses/export">
                 Download Excel
               </a>
-              <button className="inline-flex min-h-12 items-center justify-center rounded-full bg-rose-600 px-6 font-semibold text-white transition hover:bg-rose-700" type="submit" form="bulk-delete-form">
-                Delete Selected Responses
-              </button>
+              <FeedbackResponseBulkDeleteButton />
             </div>
             <div className="overflow-x-auto rounded-[1.5rem] border border-slate-200">
               <table className="min-w-[2350px] divide-y divide-slate-200 bg-white text-sm">
@@ -83,7 +81,7 @@ export default async function FeedbackResponsesPage({
                     <tr key={`${response.responseId ?? response.email}-${facultyResponse?.facultyId ?? "none"}-${index}`}>
                       {isFirstRowForResponse ? (
                         <>
-                          <td rowSpan={responseRowSpan} className="px-4 py-3 text-slate-700 align-top"><input type="checkbox" name="responseIds" value={response.responseId ?? ""} form="bulk-delete-form" /></td>
+                          <td rowSpan={responseRowSpan} className="px-4 py-3 text-slate-700 align-top"><input type="checkbox" name="responseIds" value={response.responseId ?? ""} /></td>
                           <td rowSpan={responseRowSpan} className="whitespace-pre-wrap px-4 py-3 text-slate-700 align-top">{response.submittedAt}</td>
                           <td rowSpan={responseRowSpan} className="whitespace-pre-wrap px-4 py-3 text-slate-700 align-top">{response.email}</td>
                           <td rowSpan={responseRowSpan} className="whitespace-pre-wrap px-4 py-3 font-medium text-slate-950 align-top">{response.studentName}</td>
@@ -102,12 +100,7 @@ export default async function FeedbackResponsesPage({
                             <td key={questionText} rowSpan={responseRowSpan} className="whitespace-pre-wrap px-4 py-3 text-slate-700 align-top">{getAnswerValue(response.generalResponse.answers, questionText)}</td>
                           ))}
                           <td rowSpan={responseRowSpan} className="px-4 py-3 align-top">
-                            <form action={deleteFeedbackResponseAction}>
-                              <input type="hidden" name="responseId" value={response.responseId ?? ""} />
-                              <button className="rounded-full bg-rose-600 px-4 py-2 font-semibold text-white transition hover:bg-rose-700" type="submit">
-                                Delete
-                              </button>
-                            </form>
+                            <FeedbackResponseDeleteButton responseId={response.responseId ?? ""} studentName={response.studentName} />
                           </td>
                         </>
                       ) : null}
@@ -116,7 +109,6 @@ export default async function FeedbackResponsesPage({
                 </tbody>
               </table>
             </div>
-            <form id="bulk-delete-form" action={deleteBulkFeedbackResponsesAction} />
             <FeedbackResponseSelectAll page={result.page} />
             <ShowingCount result={result} />
             <AdminPagination basePath="/admin/feedback-responses" page={result.page} totalPages={result.totalPages} />
