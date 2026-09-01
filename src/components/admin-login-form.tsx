@@ -28,7 +28,7 @@ export function AdminLoginForm() {
           className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none transition focus:border-amber-400 focus:bg-white"
           name="email"
           type="email"
-          placeholder="admin@feedback.local"
+          placeholder="example@gmail.com"
           required
         />
       </label>
