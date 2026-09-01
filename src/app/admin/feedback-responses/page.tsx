@@ -1,49 +1,44 @@
-import Script from "next/script";
 import { deleteBulkFeedbackResponsesAction, deleteFeedbackResponseAction } from "@/app/admin/actions";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { readAdminStore } from "@/lib/admin-store";
+import { parsePage, redirectIfStalePage } from "@/lib/admin-pagination";
+import { getFeedbackResponseMetrics, listFeedbackResponsesPage, listFeedbackTableQuestions } from "@/lib/admin-store";
 import { buildGroupedFeedbackResponseTable, getAnswerValue } from "@/lib/feedback-response-table";
 import { AdminShell, SectionCard } from "@/components/admin-shell";
+import { AdminPagination, ShowingCount } from "@/components/admin-list-ui";
+import { FeedbackResponseSelectAll } from "@/components/feedback-response-select-all";
 
-const selectAllScript = `
-  (() => {
-    const master = document.getElementById("select-all-responses");
-    if (!(master instanceof HTMLInputElement)) return;
-
-    const getBoxes = () => Array.from(document.querySelectorAll('input[name="responseIds"]')).filter((node) => node instanceof HTMLInputElement);
-
-    const sync = () => {
-      const boxes = getBoxes();
-      const checked = boxes.filter((box) => box.checked).length;
-      master.checked = boxes.length > 0 && checked === boxes.length;
-      master.indeterminate = checked > 0 && checked < boxes.length;
-    };
-
-    master.addEventListener("change", () => {
-      const boxes = getBoxes();
-      boxes.forEach((box) => {
-        box.checked = master.checked;
-      });
-      master.indeterminate = false;
-    });
-
-    getBoxes().forEach((box) => {
-      box.addEventListener("change", sync);
-    });
-
-    sync();
-  })();
-`;
-
-export default async function FeedbackResponsesPage() {
+export default async function FeedbackResponsesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   await requireAdminSession();
-  const store = await readAdminStore();
-  const { responses, facultyQuestionTexts, generalQuestionTexts, tableRows, groupedTableRows } = buildGroupedFeedbackResponseTable(store);
+  const requestedPage = parsePage((await searchParams).page);
+  const [result, metrics, questions] = await Promise.all([
+    listFeedbackResponsesPage(requestedPage),
+    getFeedbackResponseMetrics(),
+    listFeedbackTableQuestions(),
+  ]);
+  redirectIfStalePage("/admin/feedback-responses", requestedPage, result.page);
+
+  const { facultyQuestionTexts, generalQuestionTexts, groupedTableRows } = buildGroupedFeedbackResponseTable({
+    feedbackResponses: result.items,
+    questions,
+  });
 
   return (
-    <AdminShell current="/admin/feedback-responses" title="Feedback Responses" description="Submitted student feedback captured from the public form." metrics={[{ label: "Responses", value: responses.length }, { label: "Rows", value: tableRows.length }, { label: "Students", value: new Set(responses.map((response) => response.email)).size }]}>
+    <AdminShell
+      current="/admin/feedback-responses"
+      title="Feedback Responses"
+      description="Submitted student feedback captured from the public form."
+      metrics={[
+        { label: "Responses", value: metrics.responses },
+        { label: "Rows", value: metrics.rows },
+        { label: "Students", value: metrics.students },
+      ]}
+    >
       <SectionCard title="Response Table" description="Download responses in Excel-friendly CSV format and delete them in single or bulk mode.">
-        {tableRows.length === 0 ? (
+        {metrics.responses === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
             No feedback responses captured yet.
           </div>
@@ -122,7 +117,9 @@ export default async function FeedbackResponsesPage() {
               </table>
             </div>
             <form id="bulk-delete-form" action={deleteBulkFeedbackResponsesAction} />
-            <Script id="feedback-response-select-all" strategy="afterInteractive">{selectAllScript}</Script>
+            <FeedbackResponseSelectAll page={result.page} />
+            <ShowingCount result={result} />
+            <AdminPagination basePath="/admin/feedback-responses" page={result.page} totalPages={result.totalPages} />
           </div>
         )}
       </SectionCard>

@@ -1,3 +1,4 @@
+import type { PaginatedList } from "./admin-pagination";
 import type { FacultyMember, FeedbackQuestion, FeedbackSubmission } from "./feedback-types";
 
 export type AdminQuestionCategory = "faculty" | "coordinator" | "mentor" | "general";
@@ -14,10 +15,67 @@ export type AdminBranch = {
   name: string;
 };
 
+export type BranchListPage = PaginatedList<AdminBranch>;
+
+export type NamedOption = {
+  id: string;
+  name: string;
+};
+
+export type BatchListItem = {
+  id: string;
+  name: string;
+  branchId: string;
+  courseId: string;
+  status: BatchStatus;
+  branchName: string;
+  courseName: string;
+};
+
+export type BatchListPage = PaginatedList<BatchListItem>;
+
+export type BatchMetrics = {
+  total: number;
+  active: number;
+  students: number;
+};
+
+export type FacultyListItem = FacultyMember & {
+  batchIds: string[];
+  batchNames: string[];
+  branchNames: string[];
+  courseNames: string[];
+};
+
+export type FacultyListPage = PaginatedList<FacultyListItem>;
+
+export type FacultyMetrics = {
+  total: number;
+  assignments: number;
+};
+
+export type QuestionListPage = PaginatedList<AdminQuestion>;
+
+export type QuestionMetrics = {
+  total: number;
+  faculty: number;
+  general: number;
+};
+
+export type FeedbackResponseListPage = PaginatedList<FeedbackSubmission>;
+
+export type FeedbackResponseMetrics = {
+  responses: number;
+  rows: number;
+  students: number;
+};
+
 export type AdminCourse = {
   id: string;
   name: string;
 };
+
+export type CourseListPage = PaginatedList<AdminCourse>;
 
 export type AdminSimplePerson = {
   id: string;

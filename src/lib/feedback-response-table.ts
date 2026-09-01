@@ -1,11 +1,15 @@
-import type { AdminStore } from "@/lib/admin-types";
 import type { FacultyFeedbackResponse, FeedbackSubmission } from "@/lib/feedback-types";
+
+type FeedbackTableSource = {
+  feedbackResponses: FeedbackSubmission[];
+  questions: Array<{ category: string; text: string }>;
+};
 
 export function getAnswerValue(answers: Array<{ questionText: string; value: string }>, questionText: string) {
   return answers.find((answer) => answer.questionText === questionText)?.value || "-";
 }
 
-export function buildFeedbackResponseTable(store: AdminStore) {
+export function buildFeedbackResponseTable(store: FeedbackTableSource) {
   const responses = store.feedbackResponses;
   const facultyQuestionTexts = store.questions.filter((question) => question.category === "faculty").map((question) => question.text);
   const generalQuestionTexts = store.questions.filter((question) => question.category === "general").map((question) => question.text);
@@ -23,7 +27,7 @@ export function buildFeedbackResponseTable(store: AdminStore) {
   return { responses, facultyQuestionTexts, generalQuestionTexts, tableRows };
 }
 
-export function buildGroupedFeedbackResponseTable(store: AdminStore) {
+export function buildGroupedFeedbackResponseTable(store: FeedbackTableSource) {
   const { responses, facultyQuestionTexts, generalQuestionTexts, tableRows } = buildFeedbackResponseTable(store);
   const groupedTableRows = tableRows.map((row, index) => {
     const isFirstRowForResponse = index === 0 || tableRows[index - 1]?.response !== row.response;
@@ -50,7 +54,7 @@ function escapeCsvValue(value: string) {
   return normalized;
 }
 
-export function buildFeedbackResponseCsv(store: AdminStore) {
+export function buildFeedbackResponseCsv(store: FeedbackTableSource) {
   const { facultyQuestionTexts, generalQuestionTexts, tableRows } = buildFeedbackResponseTable(store);
   const headers = [
     "Timestamp",
@@ -89,7 +93,7 @@ function escapeHtml(value: string) {
     .replaceAll('"', "&quot;");
 }
 
-export function buildFeedbackResponseExcelHtml(store: AdminStore) {
+export function buildFeedbackResponseExcelHtml(store: FeedbackTableSource) {
   const { facultyQuestionTexts, generalQuestionTexts, groupedTableRows } = buildGroupedFeedbackResponseTable(store);
   const headers = [
     "Timestamp",

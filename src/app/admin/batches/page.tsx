@@ -1,18 +1,37 @@
-import { createBatchAction } from "@/app/admin/actions";
 import { requireAdminSession } from "@/lib/admin-auth";
-import { readAdminStore } from "@/lib/admin-store";
-import { AdminShell, BatchRow, SectionCard } from "@/components/admin-shell";
+import { parsePage, redirectIfStalePage } from "@/lib/admin-pagination";
+import { getBatchMetrics, listBatchesPage, listNamedOptions } from "@/lib/admin-store";
+import { AdminShell, SectionCard } from "@/components/admin-shell";
+import { BatchesManager } from "@/components/batches-manager";
 
-export default async function BatchesPage() {
+export default async function BatchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   await requireAdminSession();
-  const store = await readAdminStore();
+  const requestedPage = parsePage((await searchParams).page);
+  const [result, metrics, branches, courses] = await Promise.all([
+    listBatchesPage(requestedPage),
+    getBatchMetrics(),
+    listNamedOptions("branches"),
+    listNamedOptions("courses"),
+  ]);
+  redirectIfStalePage("/admin/batches", requestedPage, result.page);
+
   return (
-    <AdminShell current="/admin/batches" title="Batches" description="Manage batches and batch assignments. New batches are active by default and can be changed to inactive later." metrics={[{ label: "Total", value: store.batches.length }, { label: "Active", value: store.batches.filter((batch) => batch.status === "active").length }, { label: "Students", value: store.batches.reduce((sum, batch) => sum + batch.strength, 0) }]}>
-      <SectionCard title="Add Batch" description="Create one batch at a time. New batches start in active status.">
-        <form action={createBatchAction} className="grid gap-4 lg:grid-cols-2"><input className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400" name="name" placeholder="Batch name" required /><select name="branchId" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400" defaultValue="" required><option value="" disabled>Select branch</option>{store.branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select><select name="courseId" className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-blue-400" defaultValue="" required><option value="" disabled>Select course</option>{store.courses.map((course) => <option key={course.id} value={course.id}>{course.name}</option>)}</select><button className="lg:col-span-2 rounded-full bg-slate-950 px-6 py-3 font-semibold text-white" type="submit">Save batch</button></form>
-      </SectionCard>
-      <SectionCard title="Batch List" description="Existing batches and their status.">
-        <div className="space-y-4">{store.batches.map((batch) => <BatchRow key={batch.id} batch={batch} branches={store.branches} courses={store.courses} />)}</div>
+    <AdminShell
+      current="/admin/batches"
+      title="Batches"
+      description="Manage batches and batch assignments. New batches are active by default and can be changed to inactive later."
+      metrics={[
+        { label: "Total", value: metrics.total },
+        { label: "Active", value: metrics.active },
+        { label: "Students", value: metrics.students },
+      ]}
+    >
+      <SectionCard title="Batch List" description="Existing batches and their status. Add a batch from the popup, then edit or delete with the row icons.">
+        <BatchesManager result={result} branches={branches} courses={courses} />
       </SectionCard>
     </AdminShell>
   );
