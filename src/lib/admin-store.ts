@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getPgPool } from "@/lib/postgres";
 import { ADMIN_PAGE_SIZE, paginationMeta, type QuestionCategoryFilter } from "@/lib/admin-pagination";
-import type { AdminBatch, AdminBranch, AdminCourse, AdminIdentity, AdminQuestion, AdminQuestionCategory, AdminSimplePerson, AdminStore, BatchListItem, BatchListPage, BatchMetrics, BranchListPage, CourseListPage, FacultyListItem, FacultyListPage, FacultyMetrics, FeedbackResponseListPage, FeedbackResponseMetrics, NamedOption, QuestionListPage, QuestionMetrics } from "@/lib/admin-types";
+import type { ActiveBatchListPage, AdminBatch, AdminBranch, AdminCourse, AdminIdentity, AdminQuestion, AdminQuestionCategory, AdminSimplePerson, AdminStore, BatchListItem, BatchListPage, BatchMetrics, BranchListPage, CourseListPage, DashboardCounts, FacultyListItem, FacultyListPage, FacultyMetrics, FeedbackResponseListPage, FeedbackResponseMetrics, NamedOption, QuestionListPage, QuestionMetrics } from "@/lib/admin-types";
 import type { BatchFeedbackConfig, FeedbackSubmission, GeneralFeedbackResponse } from "@/lib/feedback-types";
 
 const seedStorePath = path.join(process.cwd(), "data", "admin-store.json");
@@ -268,6 +268,33 @@ export async function listBatchesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Pro
      LEFT JOIN courses c ON c.id = b.course_id
      ORDER BY LOWER(b.name), b.id
      LIMIT $1 OFFSET $2`,
+    [safeSize, offset],
+  );
+  return { items: pageResult.rows, total, page: safePage, pageSize: safeSize, totalPages };
+}
+
+export async function getDashboardCounts(): Promise<DashboardCounts> {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<DashboardCounts>(
+    `SELECT
+      (SELECT COUNT(*)::int FROM branches) AS branches,
+      (SELECT COUNT(*)::int FROM courses) AS courses,
+      (SELECT COUNT(*)::int FROM batches) AS batches,
+      (SELECT COUNT(*)::int FROM faculties) AS faculties,
+      (SELECT COUNT(*)::int FROM coordinators) AS coordinators,
+      (SELECT COUNT(*)::int FROM mentors) AS mentors,
+      (SELECT COUNT(*)::int FROM questions) AS questions`,
+  );
+  return result.rows[0] ?? { branches: 0, courses: 0, batches: 0, faculties: 0, coordinators: 0, mentors: 0, questions: 0 };
+}
+
+export async function listActiveBatchesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Promise<ActiveBatchListPage> {
+  await ensureDatabaseStore();
+  const countResult = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM batches WHERE status = 'active'");
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const pageResult = await getPgPool().query<NamedOption>(
+    "SELECT id, name FROM batches WHERE status = 'active' ORDER BY LOWER(name), id LIMIT $1 OFFSET $2",
     [safeSize, offset],
   );
   return { items: pageResult.rows, total, page: safePage, pageSize: safeSize, totalPages };

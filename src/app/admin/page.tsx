@@ -1,12 +1,19 @@
 import Link from "next/link";
-import { readAdminStore } from "@/lib/admin-store";
 import { requireAdminSession } from "@/lib/admin-auth";
+import { parsePage, redirectIfStalePage } from "@/lib/admin-pagination";
+import { getDashboardCounts, listActiveBatchesPage } from "@/lib/admin-store";
 import { AdminShell, SectionCard } from "@/components/admin-shell";
+import { AdminPagination, ShowingCount } from "@/components/admin-list-ui";
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   await requireAdminSession();
-  const store = await readAdminStore();
-  const activeBatches = store.batches.filter((batch) => batch.status === "active");
+  const requestedPage = parsePage((await searchParams).page);
+  const [counts, activeBatches] = await Promise.all([getDashboardCounts(), listActiveBatchesPage(requestedPage)]);
+  redirectIfStalePage("/admin", requestedPage, activeBatches.page);
 
   return (
     <AdminShell
@@ -14,9 +21,9 @@ export default async function AdminDashboardPage() {
       title="Dashboard"
       description="Overview of the feedback administration system and shortcuts to each separate management page."
       metrics={[
-        { label: "Branches", value: store.branches.length },
-        { label: "Courses", value: store.courses.length },
-        { label: "Batches", value: store.batches.length },
+        { label: "Branches", value: counts.branches },
+        { label: "Courses", value: counts.courses },
+        { label: "Batches", value: counts.batches },
       ]}
     >
       <section className="grid gap-4 md:grid-cols-3">
@@ -27,18 +34,28 @@ export default async function AdminDashboardPage() {
 
       <SectionCard title="Current Status" description="Quick system overview.">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Faculty</p><p className="mt-2 text-2xl font-semibold text-slate-950">{store.faculties.length}</p></div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Coordinators</p><p className="mt-2 text-2xl font-semibold text-slate-950">{store.coordinators.length}</p></div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Mentors</p><p className="mt-2 text-2xl font-semibold text-slate-950">{store.mentors.length}</p></div>
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Questions</p><p className="mt-2 text-2xl font-semibold text-slate-950">{store.questions.length}</p></div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Faculty</p><p className="mt-2 text-2xl font-semibold text-slate-950">{counts.faculties}</p></div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Coordinators</p><p className="mt-2 text-2xl font-semibold text-slate-950">{counts.coordinators}</p></div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Mentors</p><p className="mt-2 text-2xl font-semibold text-slate-950">{counts.mentors}</p></div>
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><p className="text-sm text-slate-500">Questions</p><p className="mt-2 text-2xl font-semibold text-slate-950">{counts.questions}</p></div>
         </div>
       </SectionCard>
 
       <SectionCard title="Batch Status" description="Batches currently available on the public feedback page.">
-        {activeBatches.length > 0 ? (
-          <div className="grid gap-3 md:grid-cols-2">{activeBatches.map((batch) => <div key={batch.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-700"><p className="text-xl font-semibold text-slate-950">{batch.name}</p></div>)}</div>
-        ) : (
+        {activeBatches.total === 0 ? (
           <p className="text-sm text-slate-600">No active batches available.</p>
+        ) : (
+          <>
+            <div className="grid gap-3 md:grid-cols-2">
+              {activeBatches.items.map((batch) => (
+                <div key={batch.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-700">
+                  <p className="text-xl font-semibold text-slate-950">{batch.name}</p>
+                </div>
+              ))}
+            </div>
+            <ShowingCount result={activeBatches} />
+            <AdminPagination basePath="/admin" page={activeBatches.page} totalPages={activeBatches.totalPages} />
+          </>
         )}
       </SectionCard>
 
