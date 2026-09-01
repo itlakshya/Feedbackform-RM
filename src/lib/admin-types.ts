@@ -40,6 +40,18 @@ export type BatchMetrics = {
   students: number;
 };
 
+export type DashboardCounts = {
+  branches: number;
+  courses: number;
+  batches: number;
+  faculties: number;
+  coordinators: number;
+  mentors: number;
+  questions: number;
+};
+
+export type ActiveBatchListPage = PaginatedList<NamedOption>;
+
 export type FacultyListItem = FacultyMember & {
   batchIds: string[];
   batchNames: string[];
