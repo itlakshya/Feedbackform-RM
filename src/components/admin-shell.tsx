@@ -52,7 +52,7 @@ export function AdminShell({
             ))}
           </div>
           <form action={logoutAdmin}>
-            <button className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-slate-200 px-5 font-semibold text-slate-900 transition hover:bg-slate-50" type="submit">Logout</button>
+            <button className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-slate-200 px-5 font-semibold text-white transition hover:bg-red-500 hover:text-white bg-red-400" type="submit">Logout</button>
           </form>
         </aside>
         <div className="space-y-6 rounded-[2rem] border border-slate-200 bg-white/95 p-6 shadow-[0_20px_70px_rgba(15,23,42,0.08)]">

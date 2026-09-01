@@ -6,7 +6,8 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { getPgPool } from "@/lib/postgres";
-import type { AdminBatch, AdminIdentity, AdminQuestionCategory, AdminSimplePerson, AdminStore } from "@/lib/admin-types";
+import { ADMIN_PAGE_SIZE, paginationMeta, type QuestionCategoryFilter } from "@/lib/admin-pagination";
+import type { AdminBatch, AdminBranch, AdminCourse, AdminIdentity, AdminQuestion, AdminQuestionCategory, AdminSimplePerson, AdminStore, BatchListItem, BatchListPage, BatchMetrics, BranchListPage, CourseListPage, FacultyListItem, FacultyListPage, FacultyMetrics, FeedbackResponseListPage, FeedbackResponseMetrics, NamedOption, QuestionListPage, QuestionMetrics } from "@/lib/admin-types";
 import type { BatchFeedbackConfig, FeedbackSubmission, GeneralFeedbackResponse } from "@/lib/feedback-types";
 
 const seedStorePath = path.join(process.cwd(), "data", "admin-store.json");
@@ -143,8 +144,50 @@ function parseCsv(text: string) {
   return rows;
 }
 
+function getFacultyColumnIndexes(headers: string[]) {
+  return headers.reduce<number[]>((indexes, header, index) => {
+    const normalized = header.trim().toLowerCase().replace(/[\s-]+/g, "_");
+    if (normalized === "faculty" || normalized === "faculty_name" || /^faculty_?\d+$/.test(normalized) || /^faculty_name_?\d+$/.test(normalized)) {
+      indexes.push(index);
+    }
+    return indexes;
+  }, []);
+}
+
+function getUniqueFacultyNames(row: string[], facultyColumnIndexes: number[]) {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const index of facultyColumnIndexes) {
+    const name = row[index]?.trim() ?? "";
+    const key = name.toLowerCase();
+    if (!name || seen.has(key)) continue;
+    seen.add(key);
+    names.push(name);
+  }
+  return names;
+}
+
 function parseQuestionOptions(value: unknown) { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : []; }
 function parseGeneralResponse(value: unknown): GeneralFeedbackResponse { if (value && typeof value === "object") { const parsed = value as GeneralFeedbackResponse; return { averageScore: Number(parsed.averageScore ?? 0), answers: Array.isArray(parsed.answers) ? parsed.answers : [], comment: typeof parsed.comment === "string" ? parsed.comment : "" }; } return { averageScore: 0, answers: [], comment: "" }; }
+type FeedbackResponseRow = { response_id: string; batch_id: string; batch_name: string; branch: string; course: string; semester: string; student_name: string; mobile_number: string; email: string; submitted_at: Date | string; faculty_responses: unknown; support_responses: unknown; general_response: unknown; overall_comment: string };
+function mapFeedbackResponseRow(row: FeedbackResponseRow): FeedbackSubmission {
+  return {
+    responseId: row.response_id,
+    batchId: row.batch_id,
+    batchName: row.batch_name,
+    branch: row.branch,
+    course: row.course,
+    semester: row.semester,
+    studentName: row.student_name,
+    mobileNumber: row.mobile_number,
+    email: row.email,
+    submittedAt: typeof row.submitted_at === "string" ? row.submitted_at : row.submitted_at.toISOString(),
+    facultyResponses: Array.isArray(row.faculty_responses) ? row.faculty_responses : [],
+    supportResponses: Array.isArray(row.support_responses) ? row.support_responses : [],
+    generalResponse: parseGeneralResponse(row.general_response),
+    overallComment: row.overall_comment,
+  };
+}
 function getActiveBatchDependencies(store: AdminStore, batch: AdminBatch) { return { branch: store.branches.find((item) => item.id === batch.branchId) ?? null, course: store.courses.find((item) => item.id === batch.courseId) ?? null, coordinator: store.coordinators.find((item) => item.id === batch.coordinatorId) ?? null, mentor: store.mentors.find((item) => item.id === batch.mentorId) ?? null }; }
 function resetActiveBatchIfMissing(store: AdminStore) { if (!store.batches.some((batch) => batch.id === store.activeBatchId)) store.activeBatchId = store.batches.find((batch) => batch.status === "active")?.id ?? null; }
 function findOrCreateByName<T extends { id: string; name: string }>(list: T[], name: string, prefix: string) { const normalized = name.trim().toLowerCase(); const existing = list.find((item) => item.name.trim().toLowerCase() === normalized); if (existing) return existing; const created = { id: createId(prefix), name: name.trim() } as T; list.push(created); return created; }
@@ -167,8 +210,198 @@ export async function readAdminStore(): Promise<AdminStore> {
     mentors: (mentorResult.rows as Array<{ id: string; name: string }>).map((row) => ({ id: row.id, name: row.name })),
     questions: (questionResult.rows as Array<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: "rating" | "text" | "textarea" | "single_choice"; options: unknown; mandatory: boolean }>).map((row) => ({ id: row.id, text: row.text, helper: row.helper, category: row.category, inputType: row.input_type, options: parseQuestionOptions(row.options), mandatory: row.category === "general" ? Boolean(row.mandatory) : false })),
     batches: (batchResult.rows as Array<{ id: string; name: string; branch_id: string; course_id: string; semester: string; strength: number; coordinator_id: string | null; mentor_id: string | null; status: "active" | "inactive" }>).map((row) => ({ id: row.id, name: row.name, branchId: row.branch_id, courseId: row.course_id, semester: row.semester, strength: Number(row.strength ?? 0), facultyIds: batchFacultyMap.get(row.id) ?? [], coordinatorId: row.coordinator_id, mentorId: row.mentor_id, status: row.status ?? "active" })),
-    feedbackResponses: (feedbackResult.rows as Array<{ response_id: string; batch_id: string; batch_name: string; branch: string; course: string; semester: string; student_name: string; mobile_number: string; email: string; submitted_at: Date | string; faculty_responses: unknown; support_responses: unknown; general_response: unknown; overall_comment: string }>).map((row) => ({ responseId: row.response_id, batchId: row.batch_id, batchName: row.batch_name, branch: row.branch, course: row.course, semester: row.semester, studentName: row.student_name, mobileNumber: row.mobile_number, email: row.email, submittedAt: typeof row.submitted_at === "string" ? row.submitted_at : row.submitted_at.toISOString(), facultyResponses: Array.isArray(row.faculty_responses) ? row.faculty_responses : [], supportResponses: Array.isArray(row.support_responses) ? row.support_responses : [], generalResponse: parseGeneralResponse(row.general_response), overallComment: row.overall_comment })),
+    feedbackResponses: (feedbackResult.rows as FeedbackResponseRow[]).map(mapFeedbackResponseRow),
   };
+}
+
+export async function listNamedOptions(table: "branches" | "courses" | "batches"): Promise<NamedOption[]> {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<NamedOption>(`SELECT id, name FROM ${table} ORDER BY LOWER(name), id`);
+  return result.rows;
+}
+
+export async function listBranchesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Promise<BranchListPage> {
+  await ensureDatabaseStore();
+  const countResult = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM branches");
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const pageResult = await getPgPool().query<AdminBranch>("SELECT id, name FROM branches ORDER BY LOWER(name), id LIMIT $1 OFFSET $2", [safeSize, offset]);
+  return { items: pageResult.rows, total, page: safePage, pageSize: safeSize, totalPages };
+}
+
+export async function listCoursesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Promise<CourseListPage> {
+  await ensureDatabaseStore();
+  const countResult = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM courses");
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const pageResult = await getPgPool().query<AdminCourse>("SELECT id, name FROM courses ORDER BY LOWER(name), id LIMIT $1 OFFSET $2", [safeSize, offset]);
+  return { items: pageResult.rows, total, page: safePage, pageSize: safeSize, totalPages };
+}
+
+export async function countBatches() {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM batches");
+  return result.rows[0]?.count ?? 0;
+}
+
+export async function countActiveBatches() {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM batches WHERE status = 'active'");
+  return result.rows[0]?.count ?? 0;
+}
+
+export async function getBatchMetrics(): Promise<BatchMetrics> {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<BatchMetrics>(`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE status = 'active')::int AS active, COALESCE(SUM(strength), 0)::int AS students FROM batches`);
+  return result.rows[0] ?? { total: 0, active: 0, students: 0 };
+}
+
+export async function listBatchesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Promise<BatchListPage> {
+  await ensureDatabaseStore();
+  const countResult = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM batches");
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const pageResult = await getPgPool().query<BatchListItem>(
+    `SELECT b.id, b.name, b.branch_id AS "branchId", b.course_id AS "courseId", b.status, COALESCE(br.name, '') AS "branchName", COALESCE(c.name, '') AS "courseName"
+     FROM batches b
+     LEFT JOIN branches br ON br.id = b.branch_id
+     LEFT JOIN courses c ON c.id = b.course_id
+     ORDER BY LOWER(b.name), b.id
+     LIMIT $1 OFFSET $2`,
+    [safeSize, offset],
+  );
+  return { items: pageResult.rows, total, page: safePage, pageSize: safeSize, totalPages };
+}
+
+export async function getFacultyMetrics(): Promise<FacultyMetrics> {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<FacultyMetrics>(`SELECT (SELECT COUNT(*)::int FROM faculties) AS total, (SELECT COUNT(*)::int FROM batch_faculties) AS assignments`);
+  return result.rows[0] ?? { total: 0, assignments: 0 };
+}
+
+export async function listFacultiesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Promise<FacultyListPage> {
+  await ensureDatabaseStore();
+  const countResult = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM faculties");
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const facultyResult = await getPgPool().query<{ id: string; name: string; subject: string; designation: string; sessions_handled: number }>(
+    "SELECT id, name, subject, designation, sessions_handled FROM faculties ORDER BY LOWER(name), id LIMIT $1 OFFSET $2",
+    [safeSize, offset],
+  );
+  const facultyIds = facultyResult.rows.map((row) => row.id);
+  const assignmentMap = new Map<string, { batchIds: string[]; batchNames: string[]; branchNames: Set<string>; courseNames: Set<string> }>();
+  for (const id of facultyIds) assignmentMap.set(id, { batchIds: [], batchNames: [], branchNames: new Set(), courseNames: new Set() });
+  if (facultyIds.length > 0) {
+    const assignmentResult = await getPgPool().query<{ faculty_id: string; batch_id: string; batch_name: string; branch_name: string | null; course_name: string | null }>(
+      `SELECT bf.faculty_id, bf.batch_id, b.name AS batch_name, br.name AS branch_name, c.name AS course_name
+       FROM batch_faculties bf
+       INNER JOIN batches b ON b.id = bf.batch_id
+       LEFT JOIN branches br ON br.id = b.branch_id
+       LEFT JOIN courses c ON c.id = b.course_id
+       WHERE bf.faculty_id = ANY($1::text[])
+       ORDER BY LOWER(b.name), b.id`,
+      [facultyIds],
+    );
+    for (const row of assignmentResult.rows) {
+      const current = assignmentMap.get(row.faculty_id);
+      if (!current) continue;
+      current.batchIds.push(row.batch_id);
+      current.batchNames.push(row.batch_name);
+      if (row.branch_name) current.branchNames.add(row.branch_name);
+      if (row.course_name) current.courseNames.add(row.course_name);
+    }
+  }
+  const items: FacultyListItem[] = facultyResult.rows.map((row) => {
+    const assignment = assignmentMap.get(row.id) ?? { batchIds: [], batchNames: [], branchNames: new Set<string>(), courseNames: new Set<string>() };
+    return {
+      id: row.id,
+      name: row.name,
+      subject: row.subject,
+      designation: row.designation,
+      sessionsHandled: Number(row.sessions_handled ?? 1),
+      batchIds: assignment.batchIds,
+      batchNames: assignment.batchNames,
+      branchNames: Array.from(assignment.branchNames),
+      courseNames: Array.from(assignment.courseNames),
+    };
+  });
+  return { items, total, page: safePage, pageSize: safeSize, totalPages };
+}
+
+export async function getQuestionMetrics(): Promise<QuestionMetrics> {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<QuestionMetrics>(
+    `SELECT COUNT(*) FILTER (WHERE category IN ('faculty', 'general'))::int AS total, COUNT(*) FILTER (WHERE category = 'faculty')::int AS faculty, COUNT(*) FILTER (WHERE category = 'general')::int AS general FROM questions`,
+  );
+  return result.rows[0] ?? { total: 0, faculty: 0, general: 0 };
+}
+
+export async function listQuestionsPage(page = 1, pageSize = ADMIN_PAGE_SIZE, category: QuestionCategoryFilter = "all"): Promise<QuestionListPage> {
+  await ensureDatabaseStore();
+  const countResult = category === "all"
+    ? await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM questions WHERE category IN ('faculty', 'general')")
+    : await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM questions WHERE category = $1", [category]);
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const pageResult = category === "all"
+    ? await getPgPool().query<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: AdminQuestion["inputType"]; options: unknown; mandatory: boolean }>(
+        `SELECT id, text, helper, category, input_type, options, mandatory FROM questions WHERE category IN ('faculty', 'general') ORDER BY id LIMIT $1 OFFSET $2`,
+        [safeSize, offset],
+      )
+    : await getPgPool().query<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: AdminQuestion["inputType"]; options: unknown; mandatory: boolean }>(
+        `SELECT id, text, helper, category, input_type, options, mandatory FROM questions WHERE category = $1 ORDER BY id LIMIT $2 OFFSET $3`,
+        [category, safeSize, offset],
+      );
+  return {
+    items: pageResult.rows.map((row) => ({
+      id: row.id,
+      text: row.text,
+      helper: row.helper,
+      category: row.category,
+      inputType: row.input_type,
+      options: parseQuestionOptions(row.options),
+      mandatory: row.category === "general" ? Boolean(row.mandatory) : false,
+    })),
+    total,
+    page: safePage,
+    pageSize: safeSize,
+    totalPages,
+  };
+}
+
+export async function getFeedbackResponseMetrics(): Promise<FeedbackResponseMetrics> {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<FeedbackResponseMetrics>(
+    `SELECT
+      COUNT(*)::int AS responses,
+      COALESCE(SUM(GREATEST(CASE WHEN jsonb_typeof(faculty_responses) = 'array' THEN jsonb_array_length(faculty_responses) ELSE 0 END, 1)), 0)::int AS rows,
+      COUNT(DISTINCT email)::int AS students
+     FROM feedback_responses`,
+  );
+  return result.rows[0] ?? { responses: 0, rows: 0, students: 0 };
+}
+
+export async function listFeedbackTableQuestions() {
+  await ensureDatabaseStore();
+  const result = await getPgPool().query<{ category: AdminQuestionCategory; text: string }>(
+    `SELECT category, text FROM questions WHERE category IN ('faculty', 'general') ORDER BY id`,
+  );
+  return result.rows;
+}
+
+export async function listFeedbackResponsesPage(page = 1, pageSize = ADMIN_PAGE_SIZE): Promise<FeedbackResponseListPage> {
+  await ensureDatabaseStore();
+  const countResult = await getPgPool().query<{ count: number }>("SELECT COUNT(*)::int AS count FROM feedback_responses");
+  const total = countResult.rows[0]?.count ?? 0;
+  const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
+  const pageResult = await getPgPool().query<FeedbackResponseRow>(
+    `SELECT response_id, batch_id, batch_name, branch, course, semester, student_name, mobile_number, email, submitted_at, faculty_responses, support_responses, general_response, overall_comment
+     FROM feedback_responses
+     ORDER BY submitted_at DESC, response_id DESC
+     LIMIT $1 OFFSET $2`,
+    [safeSize, offset],
+  );
+  return { items: pageResult.rows.map(mapFeedbackResponseRow), total, page: safePage, pageSize: safeSize, totalPages };
 }
 
 export async function writeAdminStore(store: AdminStore) { await ensureDatabaseStore(); const client = await getPgPool().connect(); try { await persistStore(client, store); } finally { client.release(); } }
@@ -214,21 +447,28 @@ export async function importMasterCsv(csvText: string) {
   const summary = { processedRows: 0, createdBranches: 0, createdCourses: 0, createdBatches: 0, createdFaculties: 0, linkedFaculties: 0 };
   if (rows.length < 2) return summary;
   const headers = rows[0].map((header) => header.trim().toLowerCase()); const indexOf = (name: string) => headers.indexOf(name);
+  const facultyColumnIndexes = getFacultyColumnIndexes(headers);
   for (const row of rows.slice(1)) {
-    const branchName = row[indexOf("branch")]?.trim() ?? ""; const courseName = row[indexOf("course")]?.trim() ?? ""; const batchName = row[indexOf("batch")]?.trim() ?? ""; const facultyName = row[indexOf("faculty_name")]?.trim() ?? "";
+    const branchName = row[indexOf("branch")]?.trim() ?? ""; const courseName = row[indexOf("course")]?.trim() ?? ""; const batchName = row[indexOf("batch")]?.trim() ?? "";
     if (!branchName || !courseName || !batchName) continue; summary.processedRows += 1;
     const previousBranchCount = store.branches.length; const branch = findOrCreateByName(store.branches, branchName, "branch"); if (store.branches.length > previousBranchCount) summary.createdBranches += 1;
     const previousCourseCount = store.courses.length; const course = findOrCreateByName(store.courses, courseName, "course"); if (store.courses.length > previousCourseCount) summary.createdCourses += 1;
-    let facultyId: string | null = null;
-    if (facultyName) {
+    const facultyIds: string[] = [];
+    for (const facultyName of getUniqueFacultyNames(row, facultyColumnIndexes)) {
       const existingFaculty = store.faculties.find((item) => item.name.trim().toLowerCase() === facultyName.toLowerCase());
-      if (existingFaculty) facultyId = existingFaculty.id;
-      else { const createdFaculty = { id: createId("faculty"), name: facultyName, subject: "General", designation: "Faculty", sessionsHandled: 1 }; store.faculties.push(createdFaculty); summary.createdFaculties += 1; facultyId = createdFaculty.id; }
+      if (existingFaculty) { facultyIds.push(existingFaculty.id); continue; }
+      const createdFaculty = { id: createId("faculty"), name: facultyName, subject: "General", designation: "Faculty", sessionsHandled: 1 };
+      store.faculties.push(createdFaculty); summary.createdFaculties += 1; facultyIds.push(createdFaculty.id);
     }
     const existingBatch = store.batches.find((item) => item.name.trim().toLowerCase() === batchName.toLowerCase() && item.branchId === branch.id && item.courseId === course.id);
-    if (existingBatch) { if (facultyId && !existingBatch.facultyIds.includes(facultyId)) { existingBatch.facultyIds.push(facultyId); summary.linkedFaculties += 1; } continue; }
-    store.batches.push({ id: createId("batch"), name: batchName, branchId: branch.id, courseId: course.id, semester: "Semester 1", strength: 0, facultyIds: facultyId ? [facultyId] : [], coordinatorId: null, mentorId: null, status: "active" });
-    summary.createdBatches += 1; if (facultyId) summary.linkedFaculties += 1;
+    if (existingBatch) {
+      for (const facultyId of facultyIds) {
+        if (!existingBatch.facultyIds.includes(facultyId)) { existingBatch.facultyIds.push(facultyId); summary.linkedFaculties += 1; }
+      }
+      continue;
+    }
+    store.batches.push({ id: createId("batch"), name: batchName, branchId: branch.id, courseId: course.id, semester: "Semester 1", strength: 0, facultyIds, coordinatorId: null, mentorId: null, status: "active" });
+    summary.createdBatches += 1; summary.linkedFaculties += facultyIds.length;
   }
   resetActiveBatchIfMissing(store); await writeAdminStore(store); return summary;
 }

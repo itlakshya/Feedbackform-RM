@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "@/lib/admin-auth";
 
 const templateRows = [
-  ["branch", "course", "batch", "faculty_name"],
-  ["Kochi", "ACCA", "ACCA-1", "Anu Joseph"],
-  ["Kochi", "ACCA", "ACCA-1", "Rahul Menon"],
+  ["branch", "course", "batch", "Faculty1", "Faculty2", "Faculty3"],
+  ["Kochi", "ACCA", "ACCA-1", "Anu Joseph", "Rahul Menon", "Meera Iyer"],
+  ["Kochi", "CMA", "CMA-1", "Priya Nair", "", ""],
 ];
 
 function toCsv(rows: string[][]) {
