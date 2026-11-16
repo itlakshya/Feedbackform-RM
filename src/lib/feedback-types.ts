@@ -6,6 +6,7 @@ export type FeedbackQuestion = {
   helper: string;
   inputType: QuestionInputType;
   options: string[];
+  sortOrder: number;
 };
 
 export type GeneralFeedbackQuestion = FeedbackQuestion & {

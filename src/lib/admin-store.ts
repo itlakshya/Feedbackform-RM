@@ -28,7 +28,13 @@ function normalizeStore(raw: Partial<AdminStore> & Record<string, unknown>): Adm
     coordinators: Array.isArray(raw.coordinators) ? (raw.coordinators as AdminStore["coordinators"]) : [],
     mentors: Array.isArray(raw.mentors) ? (raw.mentors as AdminStore["mentors"]) : [],
     questions: Array.isArray(raw.questions)
-      ? (raw.questions as AdminStore["questions"]).map((question) => ({ ...question, inputType: question.inputType ?? "rating", options: Array.isArray(question.options) ? question.options.filter(Boolean) : [], mandatory: question.category === "general" ? Boolean(question.mandatory) : false }))
+      ? (raw.questions as AdminStore["questions"]).map((question, index) => ({
+          ...question,
+          inputType: question.inputType ?? "rating",
+          options: Array.isArray(question.options) ? question.options.filter(Boolean) : [],
+          mandatory: question.category === "general" ? Boolean(question.mandatory) : false,
+          sortOrder: Number.isFinite(Number(question.sortOrder)) ? Number(question.sortOrder) : index + 1,
+        }))
       : [],
     batches: Array.isArray(raw.batches)
       ? (raw.batches as AdminBatch[]).map((batch) => ({ ...batch, coordinatorId: batch.coordinatorId ?? null, mentorId: batch.mentorId ?? null, status: batch.status ?? "active" }))
@@ -52,11 +58,12 @@ async function ensureDatabaseSchema() {
     CREATE TABLE IF NOT EXISTS faculties (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, subject TEXT NOT NULL, designation TEXT NOT NULL, sessions_handled INTEGER NOT NULL DEFAULT 1);
     CREATE TABLE IF NOT EXISTS coordinators (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
     CREATE TABLE IF NOT EXISTS mentors (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE);
-    CREATE TABLE IF NOT EXISTS questions (id TEXT PRIMARY KEY, text TEXT NOT NULL, helper TEXT NOT NULL DEFAULT '', category TEXT NOT NULL, input_type TEXT NOT NULL, options JSONB NOT NULL DEFAULT '[]'::jsonb, mandatory BOOLEAN NOT NULL DEFAULT FALSE);
+    CREATE TABLE IF NOT EXISTS questions (id TEXT PRIMARY KEY, text TEXT NOT NULL, helper TEXT NOT NULL DEFAULT '', category TEXT NOT NULL, input_type TEXT NOT NULL, options JSONB NOT NULL DEFAULT '[]'::jsonb, mandatory BOOLEAN NOT NULL DEFAULT FALSE, sort_order INTEGER NOT NULL DEFAULT 0);
     CREATE TABLE IF NOT EXISTS batches (id TEXT PRIMARY KEY, name TEXT NOT NULL, branch_id TEXT NOT NULL REFERENCES branches(id) ON DELETE CASCADE, course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE, semester TEXT NOT NULL DEFAULT '', strength INTEGER NOT NULL DEFAULT 0, coordinator_id TEXT REFERENCES coordinators(id) ON DELETE SET NULL, mentor_id TEXT REFERENCES mentors(id) ON DELETE SET NULL, status TEXT NOT NULL DEFAULT 'active');
     CREATE TABLE IF NOT EXISTS batch_faculties (batch_id TEXT NOT NULL REFERENCES batches(id) ON DELETE CASCADE, faculty_id TEXT NOT NULL REFERENCES faculties(id) ON DELETE CASCADE, PRIMARY KEY (batch_id, faculty_id));
     CREATE TABLE IF NOT EXISTS feedback_responses (response_id TEXT PRIMARY KEY, batch_id TEXT NOT NULL, batch_name TEXT NOT NULL, branch TEXT NOT NULL, course TEXT NOT NULL, semester TEXT NOT NULL DEFAULT '', student_name TEXT NOT NULL, mobile_number TEXT NOT NULL, email TEXT NOT NULL, submitted_at TIMESTAMPTZ NOT NULL, faculty_responses JSONB NOT NULL DEFAULT '[]'::jsonb, support_responses JSONB NOT NULL DEFAULT '[]'::jsonb, general_response JSONB NOT NULL DEFAULT '{}'::jsonb, overall_comment TEXT NOT NULL DEFAULT '');
   `);
+  await getPgPool().query("ALTER TABLE questions ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0");
 }
 
 async function readLegacyStore() {
@@ -90,7 +97,7 @@ async function persistStore(db: Queryable, store: AdminStore) {
     for (const faculty of store.faculties) await db.query("INSERT INTO faculties (id, name, subject, designation, sessions_handled) VALUES ($1, $2, $3, $4, $5)", [faculty.id, faculty.name, faculty.subject, faculty.designation, faculty.sessionsHandled]);
     for (const coordinator of store.coordinators) await db.query("INSERT INTO coordinators (id, name) VALUES ($1, $2)", [coordinator.id, coordinator.name]);
     for (const mentor of store.mentors) await db.query("INSERT INTO mentors (id, name) VALUES ($1, $2)", [mentor.id, mentor.name]);
-    for (const question of store.questions) await db.query("INSERT INTO questions (id, text, helper, category, input_type, options, mandatory) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7)", [question.id, question.text, question.helper, question.category, question.inputType, JSON.stringify(question.options), question.mandatory]);
+    for (const question of store.questions) await db.query("INSERT INTO questions (id, text, helper, category, input_type, options, mandatory, sort_order) VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)", [question.id, question.text, question.helper, question.category, question.inputType, JSON.stringify(question.options), question.mandatory, question.sortOrder ?? 0]);
     for (const batch of store.batches) {
       await db.query("INSERT INTO batches (id, name, branch_id, course_id, semester, strength, coordinator_id, mentor_id, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)", [batch.id, batch.name, batch.branchId, batch.courseId, batch.semester, batch.strength, batch.coordinatorId, batch.mentorId, batch.status]);
       for (const facultyId of batch.facultyIds) await db.query("INSERT INTO batch_faculties (batch_id, faculty_id) VALUES ($1, $2)", [batch.id, facultyId]);
@@ -195,7 +202,7 @@ function findOrCreateByName<T extends { id: string; name: string }>(list: T[], n
 export async function readAdminStore(): Promise<AdminStore> {
   await ensureDatabaseStore();
   const [configResult, branchResult, courseResult, facultyResult, coordinatorResult, mentorResult, questionResult, batchResult, batchFacultyResult, feedbackResult] = await Promise.all([
-    getPgPool().query("SELECT config_key, config_value FROM app_config"), getPgPool().query("SELECT id, name FROM branches ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM courses ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name, subject, designation, sessions_handled FROM faculties ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM coordinators ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM mentors ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, text, helper, category, input_type, options, mandatory FROM questions ORDER BY id"), getPgPool().query("SELECT id, name, branch_id, course_id, semester, strength, coordinator_id, mentor_id, status FROM batches ORDER BY LOWER(name), id"), getPgPool().query("SELECT batch_id, faculty_id FROM batch_faculties ORDER BY batch_id, faculty_id"), getPgPool().query("SELECT response_id, batch_id, batch_name, branch, course, semester, student_name, mobile_number, email, submitted_at, faculty_responses, support_responses, general_response, overall_comment FROM feedback_responses ORDER BY submitted_at DESC, response_id DESC")
+    getPgPool().query("SELECT config_key, config_value FROM app_config"), getPgPool().query("SELECT id, name FROM branches ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM courses ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name, subject, designation, sessions_handled FROM faculties ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM coordinators ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, name FROM mentors ORDER BY LOWER(name), id"), getPgPool().query("SELECT id, text, helper, category, input_type, options, mandatory, sort_order FROM questions ORDER BY sort_order ASC, id ASC"), getPgPool().query("SELECT id, name, branch_id, course_id, semester, strength, coordinator_id, mentor_id, status FROM batches ORDER BY LOWER(name), id"), getPgPool().query("SELECT batch_id, faculty_id FROM batch_faculties ORDER BY batch_id, faculty_id"), getPgPool().query("SELECT response_id, batch_id, batch_name, branch, course, semester, student_name, mobile_number, email, submitted_at, faculty_responses, support_responses, general_response, overall_comment FROM feedback_responses ORDER BY submitted_at DESC, response_id DESC")
   ]);
   const batchFacultyMap = new Map<string, string[]>();
   for (const item of batchFacultyResult.rows as Array<{ batch_id: string; faculty_id: string }>) { const facultyIds = batchFacultyMap.get(item.batch_id) ?? []; facultyIds.push(item.faculty_id); batchFacultyMap.set(item.batch_id, facultyIds); }
@@ -208,7 +215,7 @@ export async function readAdminStore(): Promise<AdminStore> {
     faculties: (facultyResult.rows as Array<{ id: string; name: string; subject: string; designation: string; sessions_handled: number }>).map((row) => ({ id: row.id, name: row.name, subject: row.subject, designation: row.designation, sessionsHandled: Number(row.sessions_handled ?? 1) })),
     coordinators: (coordinatorResult.rows as Array<{ id: string; name: string }>).map((row) => ({ id: row.id, name: row.name })),
     mentors: (mentorResult.rows as Array<{ id: string; name: string }>).map((row) => ({ id: row.id, name: row.name })),
-    questions: (questionResult.rows as Array<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: "rating" | "text" | "textarea" | "single_choice"; options: unknown; mandatory: boolean }>).map((row) => ({ id: row.id, text: row.text, helper: row.helper, category: row.category, inputType: row.input_type, options: parseQuestionOptions(row.options), mandatory: row.category === "general" ? Boolean(row.mandatory) : false })),
+    questions: (questionResult.rows as Array<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: "rating" | "text" | "textarea" | "single_choice"; options: unknown; mandatory: boolean; sort_order: number }>).map((row) => ({ id: row.id, text: row.text, helper: row.helper, category: row.category, inputType: row.input_type, options: parseQuestionOptions(row.options), mandatory: row.category === "general" ? Boolean(row.mandatory) : false, sortOrder: Number(row.sort_order ?? 0) })),
     batches: (batchResult.rows as Array<{ id: string; name: string; branch_id: string; course_id: string; semester: string; strength: number; coordinator_id: string | null; mentor_id: string | null; status: "active" | "inactive" }>).map((row) => ({ id: row.id, name: row.name, branchId: row.branch_id, courseId: row.course_id, semester: row.semester, strength: Number(row.strength ?? 0), facultyIds: batchFacultyMap.get(row.id) ?? [], coordinatorId: row.coordinator_id, mentorId: row.mentor_id, status: row.status ?? "active" })),
     feedbackResponses: (feedbackResult.rows as FeedbackResponseRow[]).map(mapFeedbackResponseRow),
   };
@@ -371,12 +378,12 @@ export async function listQuestionsPage(page = 1, pageSize = ADMIN_PAGE_SIZE, ca
   const total = countResult.rows[0]?.count ?? 0;
   const { safeSize, safePage, totalPages, offset } = paginationMeta(total, page, pageSize);
   const pageResult = category === "all"
-    ? await getPgPool().query<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: AdminQuestion["inputType"]; options: unknown; mandatory: boolean }>(
-        `SELECT id, text, helper, category, input_type, options, mandatory FROM questions WHERE category IN ('faculty', 'general') ORDER BY id LIMIT $1 OFFSET $2`,
+    ? await getPgPool().query<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: AdminQuestion["inputType"]; options: unknown; mandatory: boolean; sort_order: number }>(
+        `SELECT id, text, helper, category, input_type, options, mandatory, sort_order FROM questions WHERE category IN ('faculty', 'general') ORDER BY sort_order ASC, id ASC LIMIT $1 OFFSET $2`,
         [safeSize, offset],
       )
-    : await getPgPool().query<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: AdminQuestion["inputType"]; options: unknown; mandatory: boolean }>(
-        `SELECT id, text, helper, category, input_type, options, mandatory FROM questions WHERE category = $1 ORDER BY id LIMIT $2 OFFSET $3`,
+    : await getPgPool().query<{ id: string; text: string; helper: string; category: AdminQuestionCategory; input_type: AdminQuestion["inputType"]; options: unknown; mandatory: boolean; sort_order: number }>(
+        `SELECT id, text, helper, category, input_type, options, mandatory, sort_order FROM questions WHERE category = $1 ORDER BY sort_order ASC, id ASC LIMIT $2 OFFSET $3`,
         [category, safeSize, offset],
       );
   return {
@@ -388,6 +395,7 @@ export async function listQuestionsPage(page = 1, pageSize = ADMIN_PAGE_SIZE, ca
       inputType: row.input_type,
       options: parseQuestionOptions(row.options),
       mandatory: row.category === "general" ? Boolean(row.mandatory) : false,
+      sortOrder: Number(row.sort_order ?? 0),
     })),
     total,
     page: safePage,
@@ -411,7 +419,7 @@ export async function getFeedbackResponseMetrics(): Promise<FeedbackResponseMetr
 export async function listFeedbackTableQuestions() {
   await ensureDatabaseStore();
   const result = await getPgPool().query<{ category: AdminQuestionCategory; text: string }>(
-    `SELECT category, text FROM questions WHERE category IN ('faculty', 'general') ORDER BY id`,
+    `SELECT category, text FROM questions WHERE category IN ('faculty', 'general') ORDER BY sort_order ASC, id ASC`,
   );
   return result.rows;
 }
@@ -440,7 +448,14 @@ export async function getActiveFeedbackConfig(): Promise<BatchFeedbackConfig | n
   const store = await readAdminStore();
   const batches = store.batches.filter((batch) => batch.status === "active").map((batch) => { const { branch, course } = getActiveBatchDependencies(store, batch); if (!branch || !course) return null; return { id: batch.id, name: batch.name, branch: branch.name, course: course.name, semester: batch.semester, strength: batch.strength, faculties: store.faculties.filter((faculty) => batch.facultyIds.includes(faculty.id)) }; }).filter(Boolean) as BatchFeedbackConfig["batches"];
   if (batches.length === 0) return null;
-  return { defaultBatchId: batches[0].id, batches, facultyQuestions: store.questions.filter((question) => question.category === "faculty"), supportSections: [], generalQuestions: store.questions.filter((question) => question.category === "general") };
+  const byOrder = (a: AdminQuestion, b: AdminQuestion) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id);
+  return {
+    defaultBatchId: batches[0].id,
+    batches,
+    facultyQuestions: store.questions.filter((question) => question.category === "faculty").sort(byOrder),
+    supportSections: [],
+    generalQuestions: store.questions.filter((question) => question.category === "general").sort(byOrder),
+  };
 }
 
 export async function addBranch(name: string) { const store = await readAdminStore(); store.branches = uniqueByName([...store.branches, { id: createId("branch"), name }]); await writeAdminStore(store); }
@@ -461,8 +476,19 @@ export async function deleteCoordinator(id: string) { const store = await readAd
 export async function addMentor(name: string) { await addSimplePeople("mentors", [name]); }
 export async function updateMentor(id: string, name: string) { const store = await readAdminStore(); store.mentors = store.mentors.map((item) => (item.id === id ? { ...item, name } : item)); await writeAdminStore(store); }
 export async function deleteMentor(id: string) { const store = await readAdminStore(); store.mentors = store.mentors.filter((item) => item.id !== id); store.batches = store.batches.map((batch) => ({ ...batch, mentorId: batch.mentorId === id ? null : batch.mentorId })); await writeAdminStore(store); }
-export async function addQuestion(payload: { text: string; helper: string; category: AdminQuestionCategory; inputType: "rating" | "text" | "textarea" | "single_choice"; options: string[]; mandatory: boolean; }) { const store = await readAdminStore(); store.questions.push({ id: createId("question"), ...payload }); await writeAdminStore(store); }
-export async function updateQuestion(id: string, payload: { text: string; helper: string; category: AdminQuestionCategory; inputType: "rating" | "text" | "textarea" | "single_choice"; options: string[]; mandatory: boolean; }) { const store = await readAdminStore(); store.questions = store.questions.map((question) => (question.id === id ? { id, ...payload } : question)); await writeAdminStore(store); }
+export async function addQuestion(payload: { text: string; helper: string; category: AdminQuestionCategory; inputType: "rating" | "text" | "textarea" | "single_choice"; options: string[]; mandatory: boolean; sortOrder: number; }) {
+  const store = await readAdminStore();
+  const nextOrder = Number.isFinite(payload.sortOrder) && payload.sortOrder > 0
+    ? Math.trunc(payload.sortOrder)
+    : Math.max(0, ...store.questions.map((question) => question.sortOrder ?? 0)) + 1;
+  store.questions.push({ id: createId("question"), ...payload, sortOrder: nextOrder });
+  await writeAdminStore(store);
+}
+export async function updateQuestion(id: string, payload: { text: string; helper: string; category: AdminQuestionCategory; inputType: "rating" | "text" | "textarea" | "single_choice"; options: string[]; mandatory: boolean; sortOrder: number; }) {
+  const store = await readAdminStore();
+  store.questions = store.questions.map((question) => (question.id === id ? { id, ...payload, sortOrder: payload.sortOrder > 0 ? Math.trunc(payload.sortOrder) : question.sortOrder } : question));
+  await writeAdminStore(store);
+}
 export async function deleteQuestion(id: string) { const store = await readAdminStore(); store.questions = store.questions.filter((question) => question.id !== id); await writeAdminStore(store); }
 export async function addBatch(payload: Omit<AdminBatch, "id">) { const store = await readAdminStore(); store.batches.push({ id: createId("batch"), ...payload, status: payload.status ?? "active" }); if (!store.activeBatchId) store.activeBatchId = store.batches.find((batch) => batch.status === "active")?.id ?? null; await writeAdminStore(store); }
 export async function updateBatch(id: string, payload: Omit<AdminBatch, "id">) { const store = await readAdminStore(); store.batches = store.batches.map((batch) => (batch.id === id ? { id, ...payload } : batch)); await writeAdminStore(store); }
