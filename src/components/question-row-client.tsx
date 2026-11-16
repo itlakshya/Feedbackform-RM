@@ -42,6 +42,7 @@ export function QuestionRowClient({ question }: { question: AdminQuestion }) {
               <option value="single_choice">Single choice</option>
             </select>
             <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-400" name="text" defaultValue={question.text} required />
+            <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-400" type="number" name="sortOrder" min={1} step={1} defaultValue={question.sortOrder || ""} placeholder="Display order" />
             <input className="rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-400" name="helper" defaultValue={question.helper} placeholder="Helper text (optional)" />
             <textarea className="min-h-24 rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-blue-400" name="options" defaultValue={question.options.join("\n")} placeholder="Choice options, one per line. Use only for single choice questions." />
             <label className="flex items-center gap-3 text-sm text-slate-700">

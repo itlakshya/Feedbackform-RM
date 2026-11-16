@@ -66,6 +66,11 @@ function QuestionForm({
         <input className={fieldClassName} name="text" defaultValue={question?.text} placeholder="Question text" required autoFocus />
       </label>
       <label className="block space-y-2">
+        <span className="text-sm font-medium text-slate-700">Display order</span>
+        <input className={fieldClassName} type="number" name="sortOrder" min={1} step={1} defaultValue={question?.sortOrder || ""} placeholder="e.g. 1" />
+        <span className="text-xs text-slate-500">Lower numbers appear first on the feedback form. Leave blank on create to append at the end.</span>
+      </label>
+      <label className="block space-y-2">
         <span className="text-sm font-medium text-slate-700">Helper</span>
         <input className={fieldClassName} name="helper" defaultValue={question?.helper} placeholder="Helper text (optional)" />
       </label>
@@ -125,7 +130,7 @@ export function QuestionsManager({ result, category }: { result: QuestionListPag
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-slate-950">{question.text}</p>
                 <p className="mt-1 text-sm text-slate-600">
-                  {question.category === "general" ? "General" : "Faculty"} · {inputTypeLabels[question.inputType]}
+                  Order {question.sortOrder} · {question.category === "general" ? "General" : "Faculty"} · {inputTypeLabels[question.inputType]}
                   {question.category === "general" ? ` · ${question.mandatory ? "Mandatory" : "Optional"}` : ""}
                 </p>
               </div>
